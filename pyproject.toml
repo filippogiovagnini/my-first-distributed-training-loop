@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "minimal-transformer-study"
+version = "0.1.0"
+description = "A minimal, readable implementation of Transformer mechanisms"
+requires-python = ">=3.10"
+dependencies = [
+    "torch",
+    "datasets",
+    "transformers",
+    "pytest",
+]
+
+[tool.setuptools.packages.find]
+include = ["src*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
