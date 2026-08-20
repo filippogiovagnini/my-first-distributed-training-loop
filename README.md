@@ -1,12 +1,8 @@
 # the-tiniest-transformer
 
-A small PyTorch implementation of Transformer building blocks and a GPT-style language model.
+A tiny implementation of a GPT model. Modern machine-learning codebases are often large, complex, and highly engineered, making it difficult to understand the core ideas behind today’s models. I’m building the tiniest model I can to learn those ideas from the ground up, and to explore how fundamental understanding can remain at the core of research, regardless of how powerful our tools become.
 
-This repository is meant to be read like a book. Most Transformer implementations are
-highly engineered and surrounded by many tools and abstractions. Here, the code is
-simplified to the bone so that the core mechanisms remain visible and easy to follow.
-
-## Current components
+## Structure
 
 - `src/attn_block.py` — causal grouped-query attention with optional KV caching.
 - `src/transformer_block.py` — RMSNorm, attention, residual connections, and SwiGLU feed-forward block.
@@ -18,37 +14,13 @@ simplified to the bone so that the core mechanisms remain visible and easy to fo
 - `src/config.py` — default training configuration.
 - `src/train.py` — TinyStories training entry point.
 
-## Run tests
-
-From the project root:
-
-```bash
-./myenv/bin/python -m pytest
-```
-
-The tests are lightweight smoke tests for tensor shapes, filtering, and a GPT forward pass.
-
-## Train
-
-Install the project and its dependencies:
+## Install the project and its dependencies:
 
 ```bash
 pip install -e .
 ```
 
-Then run:
-
-```bash
-./myenv/bin/python -m src.train
-```
-
-Training defaults are defined in `src/config.py`. They can be overridden when calling `train()`:
-
-```python
-from src.train import train
-
-train(n_layer=4, batch_size=32)
-```
+Training defaults are defined in `src/config.py`
 
 The training script uses the `roneneldan/TinyStories` dataset and the GPT-2 tokenizer.
 
