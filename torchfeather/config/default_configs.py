@@ -201,6 +201,13 @@ def get_deepseek_v3_ddp4_config() -> JobConfig:
 
     return config
 
+def get_deepseek_v3_ddp1_config() -> JobConfig:
+    config = get_deepseek_v3_ddp4_config()
+    config.training.local_batch_size = 4
+    config.training.global_batch_size = 4
+    config.parallelism.data_parallel_replicate_degree = 1
+    return config
+
 
 config_map = {
     "hsdp": get_deepseek_v3_hsdp_config,
@@ -213,6 +220,7 @@ config_map = {
     "fsdp_ep_tp": get_deepseek_v3_fsdp_ep_tp_config,
     "fsdp_ep_etp": get_deepseek_v3_fsdp_ep_etp_config,
     "ddp4": get_deepseek_v3_ddp4_config,
+    "ddp1": get_deepseek_v3_ddp1_config,
 }
 
 
