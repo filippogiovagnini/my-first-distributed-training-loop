@@ -77,6 +77,8 @@ class Trainer(Stateful):
 
     @record
     def __init__(self, job_config: JobConfig):
+
+
         self.job_config = job_config
 
         device_module, device_type = (
@@ -582,6 +584,7 @@ class Trainer(Stateful):
             self.checkpointer.close()
         if hasattr(self, "metrics_processor") and self.metrics_processor:
             self.metrics_processor.close()
+
 
 
 def _arm_successful_shutdown_watchdog(timeout_seconds: int = 30) -> None:

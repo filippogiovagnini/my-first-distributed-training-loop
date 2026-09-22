@@ -186,6 +186,21 @@ def get_deepseek_v3_fsdp_ep_etp_config() -> JobConfig:
     config.parallelism.expert_tensor_parallel_degree = 2
     return config
 
+def get_deepseek_v3_ddp4_config() -> JobConfig:
+    config = get_deepseek_v3_base_config()
+
+    config.model.args.n_layers = 6
+    config.training.local_batch_size = 1
+    config.training.seq_len = 512
+    config.training.steps = 100
+
+    config.parallelism.data_parallel_replicate_degree = 4
+    config.parallelism.data_parallel_shard_degree = 1
+    config.parallelism.tensor_parallel_degree = 1
+    config.parallelism.pipeline_parallel_degree = 1
+
+    return config
+
 
 config_map = {
     "hsdp": get_deepseek_v3_hsdp_config,
@@ -197,6 +212,7 @@ config_map = {
     "hsdp_ep": get_deepseek_v3_hsdp_ep_config,
     "fsdp_ep_tp": get_deepseek_v3_fsdp_ep_tp_config,
     "fsdp_ep_etp": get_deepseek_v3_fsdp_ep_etp_config,
+    "ddp4": get_deepseek_v3_ddp4_config,
 }
 
 

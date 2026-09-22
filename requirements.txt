@@ -1,0 +1,21 @@
+# Install a CUDA-enabled PyTorch build appropriate for the host before running
+# multi-GPU experiments. This requirement intentionally does not pin a CUDA
+# index URL, since that depends on the machine and driver setup.
+torch>=2.4.0
+torchdata>=0.8.0
+
+# Model, tokenizer, and dataset dependencies
+datasets>=2.19.0
+huggingface-hub>=0.23.0
+tokenizers>=0.19.0
+tqdm>=4.66.0
+
+# Logging and experiment tracking
+loguru>=0.7.2
+wandb>=0.17.0
+
+# Experiment analysis and plots
+matplotlib>=3.8.0
+
+# Development/testing
+pytest>=8.0.0
