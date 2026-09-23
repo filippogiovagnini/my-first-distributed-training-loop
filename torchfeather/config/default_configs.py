@@ -5,7 +5,7 @@ from torchfeather.model.moe.moe import MoEArgs
 
 def get_deepseek_v3_model_args() -> DeepSeekV3ModelArgs:
     return DeepSeekV3ModelArgs(
-        vocab_size=102400,
+        vocab_size=129280,  # DeepSeek-V3 padded vocabulary; validated against loaded assets
         dim=2048,
         inter_dim=10944,
         moe_inter_dim=1408,
@@ -43,7 +43,7 @@ def get_deepseek_v3_base_config() -> JobConfig:
     config.metrics.log_freq = 1
     config.metrics.save_folder = "metrics"
 
-    config.model.hf_assets_path = "./assets/hf/deepseek-moe-16b-base"
+    config.model.hf_assets_path = "./assets/hf/DeepSeek-V3"
     config.model.args = get_deepseek_v3_model_args()
 
     config.optimizer.name = "AdamW"
@@ -189,7 +189,33 @@ def get_deepseek_v3_fsdp_ep_etp_config() -> JobConfig:
 def get_deepseek_v3_ddp4_config() -> JobConfig:
     config = get_deepseek_v3_base_config()
 
-    config.model.args.n_layers = 6
+    # 501,440 parameters, including separate input/output embeddings.
+    # A byte vocabulary keeps embeddings small while preserving arbitrary UTF-8 text.
+    config.model.tokenizer = "byte"
+    config.model.hf_assets_path = ""
+    config.model.args = DeepSeekV3ModelArgs(
+        vocab_size=258,  # 256 bytes plus BOS and EOS
+        dim=128,
+        inter_dim=256,
+        moe_inter_dim=128,
+        n_layers=2,
+        n_dense_layers=1,
+        n_heads=4,
+        moe_args=MoEArgs(
+            num_experts=4,
+            num_shared_experts=1,
+            top_k=2,
+            score_func="softmax",
+            route_norm=False,
+            score_before_experts=False,
+        ),
+        q_lora_rank=0,
+        kv_lora_rank=32,
+        qk_nope_head_dim=16,
+        qk_rope_head_dim=16,
+        v_head_dim=32,
+        max_seq_len=512,
+    )
     config.training.local_batch_size = 1
     config.training.seq_len = 512
     config.training.steps = 100

@@ -6,6 +6,31 @@ from loguru import logger
 from tokenizers import Tokenizer
 
 
+class ByteTokenizer:
+    """UTF-8 bytes with dedicated BOS/EOS IDs for tiny training experiments."""
+
+    vocab_size = 258
+    bos_id = 256
+    eos_id = 257
+    required_vocab_size = 258
+
+    def encode(
+        self, text: str, add_bos: bool | None = None, add_eos: bool | None = None
+    ) -> list[int]:
+        tokens = list(text.encode("utf-8"))
+        if add_bos:
+            tokens.insert(0, self.bos_id)
+        if add_eos:
+            tokens.append(self.eos_id)
+        return tokens
+
+    def decode(self, token_ids: list[int], **kwargs) -> str:
+        # A generated or truncated sequence may end inside a UTF-8 character.
+        return bytes(
+            token for token in token_ids if token not in (self.bos_id, self.eos_id)
+        ).decode("utf-8", errors="replace")
+
+
 class DeepSeekV3Tokenizer:
     def __init__(
         self,
@@ -93,6 +118,11 @@ class DeepSeekV3Tokenizer:
     def vocab_size(self) -> int:
         return self.tokenizer.get_vocab_size()
 
+    @property
+    def required_vocab_size(self) -> int:
+        # Added tokens and sparse IDs can make max ID + 1 exceed token count.
+        return max(self.get_vocab().values()) + 1
+
     def get_vocab(self) -> dict[str, int]:
         return self.tokenizer.get_vocab()
 
@@ -101,3 +131,15 @@ class DeepSeekV3Tokenizer:
 
     def id_to_token(self, token_id: int) -> str | None:
         return self.tokenizer.id_to_token(token_id)
+
+
+def validate_tokenizer_vocab(
+    tokenizer: DeepSeekV3Tokenizer | ByteTokenizer, model_vocab_size: int
+) -> None:
+    """Fail before model allocation if embeddings cannot represent every token ID."""
+    required = tokenizer.required_vocab_size
+    if model_vocab_size < required:
+        raise ValueError(
+            f"Model vocab_size={model_vocab_size} cannot cover tokenizer IDs "
+            f"0..{required - 1}; set model.args.vocab_size to at least {required}."
+        )

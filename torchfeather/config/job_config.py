@@ -30,6 +30,7 @@ class Metrics:
 @dataclass
 class Model:
     hf_assets_path: str = ""
+    tokenizer: Literal["deepseek", "byte"] = "deepseek"
     args: DeepSeekV3ModelArgs = field(default_factory=DeepSeekV3ModelArgs)
 
 

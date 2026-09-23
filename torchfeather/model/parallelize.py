@@ -16,7 +16,6 @@ from torchfeather.config import TORCH_DTYPE_MAP, JobConfig
 from torchfeather.config.job_config import Compile as CompileConfig
 from torchfeather.distributed import NoParallel, ParallelDims
 from torchfeather.distributed.activation_checkpoint import apply_ac
-from torchfeather.distributed.expert_parallel import apply_moe_ep_tp
 from torchfeather.distributed.model_parallel import apply_ddp, apply_fsdp
 
 
@@ -83,6 +82,9 @@ def parallelize_deepseekv3(
         )
 
     if parallel_dims.tp_enabled or parallel_dims.ep_enabled:
+        # Triton routing kernels are needed only for these parallelism paths.
+        from torchfeather.distributed.expert_parallel import apply_moe_ep_tp
+
         ep_etp_mesh = (
             parallel_dims.get_mesh(["ep", "etp"])
             if parallel_dims.ep_enabled and parallel_dims.etp_enabled

@@ -1,5 +1,19 @@
+import torch
+
+from torchfeather.components.tokenizer import ByteTokenizer
 from torchfeather.config.default_configs import get_config
 from torchfeather.datasets import DatasetConfig
+from torchfeather.model.model import DeepSeekV3Model
+
+
+def test_tiny_baselines_fit_parameter_budget_and_tokenizer() -> None:
+    for name in ("ddp1", "ddp4"):
+        config = get_config(name)
+        with torch.device("meta"):
+            model = DeepSeekV3Model(config.model.args)
+        assert 450_000 <= sum(p.numel() for p in model.parameters()) <= 550_000
+        assert config.model.tokenizer == "byte"
+        assert config.model.args.vocab_size == ByteTokenizer.vocab_size
 
 
 def test_ddp4_config_uses_four_data_parallel_ranks() -> None:

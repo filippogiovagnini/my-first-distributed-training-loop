@@ -31,7 +31,9 @@ from torchfeather.components.optimizer import (
     build_optimizers_with_moe_load_balancing,
 )
 from torchfeather.components.tokenizer import (
+    ByteTokenizer,
     DeepSeekV3Tokenizer,
+    validate_tokenizer_vocab,
 )
 from torchfeather.config import TORCH_DTYPE_MAP, JobConfig
 from torchfeather.config.default_configs import (
@@ -55,7 +57,7 @@ class Trainer(Stateful):
     job_config: JobConfig
     parallel_dims: ParallelDims
 
-    tokenizer: DeepSeekV3Tokenizer
+    tokenizer: DeepSeekV3Tokenizer | ByteTokenizer
     dataloader: BaseDataLoader
     model_parts: list[torch.nn.Module]
     loss_fn: LossFunction
@@ -127,7 +129,13 @@ class Trainer(Stateful):
         )
 
         # build tokenizer and dataloader
-        self.tokenizer = DeepSeekV3Tokenizer(job_config.model.hf_assets_path)
+        if job_config.model.tokenizer == "byte":
+            self.tokenizer = ByteTokenizer()
+        elif job_config.model.tokenizer == "deepseek":
+            self.tokenizer = DeepSeekV3Tokenizer(job_config.model.hf_assets_path)
+        else:
+            raise ValueError(f"Unknown tokenizer: {job_config.model.tokenizer}")
+        validate_tokenizer_vocab(self.tokenizer, job_config.model.args.vocab_size)
 
         # this already builds the dataloader for the specific dp_rank we are currently in
         self.dataloader = build_hf_dataloader(
@@ -402,7 +410,17 @@ class Trainer(Stateful):
                     loss = loss_sum / global_valid_tokens
                 # need to free pred before bwd to avoid peaking memory
                 del pred
-                loss.backward()
+                # DDP averages gradients; FSDP explicitly disables that division.
+                # Compensate only for the pure DDP path selected by parallelize_deepseekv3.
+                # Keep `loss` unchanged for global loss logging.
+                backward_scale = (
+                    parallel_dims.dp_replicate
+                    if parallel_dims.dp_replicate_enabled
+                    and not parallel_dims.fsdp_enabled
+                    and not parallel_dims.ep_enabled
+                    else 1
+                )
+                (loss * backward_scale).backward()
 
         # The returned loss is local sum loss / global_valid_tokens
         return loss

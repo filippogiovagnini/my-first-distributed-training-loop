@@ -9,7 +9,7 @@ from torchfeather.model.moe import MoEArgs
 @dataclass
 class DeepSeekV3ModelArgs:
     max_seq_len: int = 4096 * 4
-    vocab_size: int = 102400
+    vocab_size: int = 129280
     dim: int = 2048
     inter_dim: int = 10944
     moe_inter_dim: int = 1408

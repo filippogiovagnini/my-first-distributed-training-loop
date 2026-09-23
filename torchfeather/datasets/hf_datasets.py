@@ -11,7 +11,7 @@ from torch.distributed.checkpoint.stateful import Stateful
 from torch.utils.data import IterableDataset
 
 from torchfeather.components.dataloader import ParallelAwareDataloader
-from torchfeather.components.tokenizer import DeepSeekV3Tokenizer
+from torchfeather.components.tokenizer import ByteTokenizer, DeepSeekV3Tokenizer
 from torchfeather.config import JobConfig
 from torchfeather.datasets import DatasetConfig
 
@@ -55,7 +55,7 @@ class HuggingFaceDataset(IterableDataset, Stateful):
         self,
         dataset_name: str,
         dataset_path: str | None,
-        tokenizer: DeepSeekV3Tokenizer, # because we want to incode the text
+        tokenizer: DeepSeekV3Tokenizer | ByteTokenizer,
         seq_len: int = 2048, # pretraining sequences length
         dp_rank: int = 0, # we encode in the dataset itself the rank for the distributed parallel training.
         dp_world_size: int = 1,
@@ -157,7 +157,7 @@ class HuggingFaceDataset(IterableDataset, Stateful):
 def build_hf_dataloader(
     dp_world_size: int,
     dp_rank: int,
-    tokenizer: DeepSeekV3Tokenizer,
+    tokenizer: DeepSeekV3Tokenizer | ByteTokenizer,
     job_config: JobConfig,
     infinite: bool = True,
 ) -> ParallelAwareDataloader:
