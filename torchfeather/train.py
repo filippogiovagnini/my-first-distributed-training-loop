@@ -144,6 +144,18 @@ class Trainer(Stateful):
             tokenizer=self.tokenizer,
             job_config=job_config,
         )
+        if job_config.training.validation_interval_steps > 0:
+            # Validate the held-out split before model allocation, W&B startup,
+            # and the first GPU training step so bad dataset metadata fails fast.
+            validation_preflight = build_dataloader(
+                dp_world_size=dp_degree,
+                dp_rank=dp_rank,
+                tokenizer=self.tokenizer,
+                job_config=job_config,
+                split="validation",
+                infinite=False,
+            )
+            del validation_preflight
 
         model_args = job_config.model.args
         model_args.max_seq_len = job_config.training.seq_len

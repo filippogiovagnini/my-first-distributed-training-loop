@@ -107,6 +107,12 @@ class LocalTokenDataset(IterableDataset, Stateful):
         current = self.state_dict()
         for key in ("sha256", "seq_len", "dp_rank", "dp_world_size", "split"):
             if state_dict.get(key) != current[key]:
+                if key == "split":
+                    raise ValueError(
+                        "Checkpoint uses a different local-token split layout "
+                        "(likely created before held-out validation was added). "
+                        "Start a fresh run with a new TORCHFEATHER_OUTPUT_DIR."
+                    )
                 raise ValueError(f"Cannot resume local dataset: {key} changed")
         position = state_dict["position"]
         if not isinstance(position, int) or position < 0:
