@@ -1,3 +1,5 @@
+import os
+
 from torchfeather.config.job_config import JobConfig
 from torchfeather.model.model_args import DeepSeekV3ModelArgs
 from torchfeather.model.moe.moe import MoEArgs
@@ -188,6 +190,8 @@ def get_deepseek_v3_fsdp_ep_etp_config() -> JobConfig:
 
 def get_deepseek_v3_ddp4_config() -> JobConfig:
     config = get_deepseek_v3_base_config()
+    config.training.dataset = "local_tokens"
+    config.training.dataset_path = os.environ.get("TORCHFEATHER_DATA_PATH", "./data/fineweb-byte")
 
     # 501,440 parameters, including separate input/output embeddings.
     # A byte vocabulary keeps embeddings small while preserving arbitrary UTF-8 text.

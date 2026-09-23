@@ -5,6 +5,7 @@ torch>=2.4.0
 torchdata>=0.8.0
 
 # Model, tokenizer, and dataset dependencies
+numpy>=1.26.0
 datasets>=2.19.0
 huggingface-hub>=0.23.0
 tokenizers>=0.19.0

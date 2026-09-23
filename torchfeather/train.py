@@ -40,7 +40,7 @@ from torchfeather.config.default_configs import (
     get_config,
 )
 from torchfeather.config.job_config import Parallelism
-from torchfeather.datasets.hf_datasets import build_hf_dataloader
+from torchfeather.datasets.loader import build_dataloader
 from torchfeather.distributed import ParallelDims
 from torchfeather.distributed import utils as dist_utils
 from torchfeather.distributed.pipeline_parallel import pipeline_llm
@@ -138,7 +138,7 @@ class Trainer(Stateful):
         validate_tokenizer_vocab(self.tokenizer, job_config.model.args.vocab_size)
 
         # this already builds the dataloader for the specific dp_rank we are currently in
-        self.dataloader = build_hf_dataloader(
+        self.dataloader = build_dataloader(
             dp_world_size=dp_degree,
             dp_rank=dp_rank,
             tokenizer=self.tokenizer,

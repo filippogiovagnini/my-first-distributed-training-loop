@@ -153,7 +153,7 @@ class HuggingFaceDataset(IterableDataset, Stateful):
 
         return _state_dict
 
-# we build the dataloader. this prefetches the data so that you don't have to download it on the fly step by step.
+# Streaming fallback: data is fetched and tokenized in the training process.
 def build_hf_dataloader(
     dp_world_size: int,
     dp_rank: int,
