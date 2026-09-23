@@ -11,8 +11,12 @@ from torch.utils.data import IterableDataset, get_worker_info
 
 
 def token_file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
     with path.open("rb") as stream:
-        return hashlib.file_digest(stream, "sha256").hexdigest()
+        # hashlib.file_digest is only available in Python 3.11+.
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 class LocalTokenDataset(IterableDataset, Stateful):

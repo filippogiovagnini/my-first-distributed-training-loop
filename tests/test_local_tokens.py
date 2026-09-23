@@ -1,4 +1,5 @@
 import copy
+import hashlib
 import json
 
 import numpy as np
@@ -9,7 +10,15 @@ from scripts.prepare_fineweb_tokens import prepare_tokens
 from torchfeather.components.tokenizer import ByteTokenizer
 from torchfeather.config.default_configs import get_config
 from torchfeather.datasets.loader import build_dataloader
-from torchfeather.datasets.local_tokens import LocalTokenDataset
+from torchfeather.datasets.local_tokens import LocalTokenDataset, token_file_sha256
+
+
+@pytest.mark.parametrize("payload", [b"", b"abc", b"abcdefgh" * 300_000])
+def test_checksum_without_python311_file_digest(tmp_path, monkeypatch, payload):
+    monkeypatch.delattr(hashlib, "file_digest", raising=False)
+    path = tmp_path / "tokens.bin"
+    path.write_bytes(payload)
+    assert token_file_sha256(path) == hashlib.sha256(payload).hexdigest()
 
 
 @pytest.fixture
