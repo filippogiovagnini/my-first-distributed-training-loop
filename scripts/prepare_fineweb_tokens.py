@@ -53,6 +53,7 @@ def main():
     parser.add_argument("--output", type=Path, default=Path("data/fineweb-byte"))
     parser.add_argument("--max-tokens", type=int, default=2_000_000)
     parser.add_argument("--revision", default="main", help="HF dataset commit or branch")
+    parser.add_argument("--shuffle-seed", type=int, default=42)
     args = parser.parse_args()
     if args.max_tokens < 1:
         parser.error("--max-tokens must be positive")
@@ -67,10 +68,13 @@ def main():
     if not revision:
         raise RuntimeError("Could not resolve dataset revision")
     print(f"Preparing {args.max_tokens:,} byte tokens from {repo}@{revision}", flush=True)
-    records = load_dataset(repo, name="default", split="train", revision=revision, streaming=True)
+    records = load_dataset(
+        repo, name="default", split="train", revision=revision, streaming=True
+    ).shuffle(seed=args.shuffle_seed, buffer_size=10_000)
     metadata = prepare_tokens(records, args.output, args.max_tokens, {
         "repo": repo, "config": "default", "split": "train", "revision": revision,
-        "selection": "unshuffled prefix",
+        "selection": "seeded-buffer-shuffle", "shuffle_seed": args.shuffle_seed,
+        "shuffle_buffer_size": 10_000,
     })
     print(f"Saved {metadata['token_count']:,} tokens to {args.output} (uint16, 2 bytes/token)")
 

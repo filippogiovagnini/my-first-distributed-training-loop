@@ -23,6 +23,7 @@ class LocalTokenDataset(IterableDataset, Stateful):
     def __init__(
         self, path: str, seq_len: int, dp_rank: int = 0,
         dp_world_size: int = 1, infinite: bool = True,
+        split: str = "train", validation_fraction: float = 0.1,
     ):
         super().__init__()
         if seq_len < 1 or dp_world_size < 1 or not 0 <= dp_rank < dp_world_size:
@@ -54,7 +55,27 @@ class LocalTokenDataset(IterableDataset, Stateful):
         self.infinite = infinite
         # Every rank gets the same number of disjoint (seq_len + 1)-token blocks.
         # Drop any incomplete block and fewer than dp_world_size leftover blocks.
-        self.samples_per_rank = count // (seq_len + 1) // dp_world_size
+        if split not in ("train", "validation"):
+            raise ValueError(f"Unknown local token split: {split}")
+        if not 0.0 < validation_fraction < 1.0:
+            raise ValueError("validation_fraction must be between 0 and 1")
+        source = metadata.get("source", {})
+        if split == "validation" and source.get("selection") != "seeded-buffer-shuffle":
+            raise ValueError(
+                "Validation requires a seeded-shuffled dataset; regenerate it with "
+                "scripts.prepare_fineweb_tokens.py"
+            )
+        usable_samples = count // (seq_len + 1) // dp_world_size * dp_world_size
+        validation_samples = (
+            int(usable_samples * validation_fraction // dp_world_size)
+            * dp_world_size
+        )
+        train_samples = usable_samples - validation_samples
+        self.split_offset = train_samples if split == "validation" else 0
+        self.split = split
+        self.samples_per_rank = (
+            validation_samples if split == "validation" else train_samples
+        ) // dp_world_size
         if self.samples_per_rank == 0:
             raise ValueError("Dataset needs at least one complete sequence per DP rank")
         self.position = 0
@@ -63,7 +84,11 @@ class LocalTokenDataset(IterableDataset, Stateful):
         if get_worker_info() is not None:
             raise RuntimeError("LocalTokenDataset currently requires num_workers=0")
         while self.infinite or self.position < self.samples_per_rank:
-            index = (self.position % self.samples_per_rank) * self.dp_world_size + self.dp_rank
+            index = (
+                self.split_offset
+                + (self.position % self.samples_per_rank) * self.dp_world_size
+                + self.dp_rank
+            )
             start = index * (self.seq_len + 1)
             block = torch.from_numpy(
                 self.tokens[start:start + self.seq_len + 1].astype(np.int64)
@@ -75,12 +100,12 @@ class LocalTokenDataset(IterableDataset, Stateful):
         return {
             "sha256": self.digest, "seq_len": self.seq_len,
             "dp_rank": self.dp_rank, "dp_world_size": self.dp_world_size,
-            "position": self.position,
+            "split": self.split, "position": self.position,
         }
 
     def load_state_dict(self, state_dict):
         current = self.state_dict()
-        for key in ("sha256", "seq_len", "dp_rank", "dp_world_size"):
+        for key in ("sha256", "seq_len", "dp_rank", "dp_world_size", "split"):
             if state_dict.get(key) != current[key]:
                 raise ValueError(f"Cannot resume local dataset: {key} changed")
         position = state_dict["position"]

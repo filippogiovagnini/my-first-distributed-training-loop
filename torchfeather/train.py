@@ -566,6 +566,13 @@ class Trainer(Stateful):
                     self.step, last_step=(self.step == job_config.training.steps)
                 )
 
+                validation_interval = job_config.training.validation_interval_steps
+                if validation_interval > 0 and (
+                    self.step % validation_interval == 0
+                    or self.step == job_config.training.steps
+                ):
+                    self.validate()
+
                 # signal the profiler that the next profiling step has started
                 if torch_profiler:
                     torch_profiler.step()
@@ -581,11 +588,99 @@ class Trainer(Stateful):
                         parallel_dims=self.parallel_dims,
                     )
 
+        if job_config.training.generation_max_new_tokens > 0:
+            self.generate_sample(job_config.training.generation_max_new_tokens)
+
         # torch.distributed.get_rank() gives you the rank (rank 0 is always the master)
         if torch.distributed.get_rank() == 0:
             logger.info("Sleeping 2 seconds for other ranks to complete")
             time.sleep(2)
             logger.info("Training completed")
+
+    @torch.no_grad()
+    def validate(self) -> float:
+        """Evaluate a fixed held-out local-token split and log its global loss."""
+        if self.job_config.training.dataset != "local_tokens":
+            raise ValueError("Validation currently requires the local_tokens dataset")
+        if self.job_config.training.validation_steps < 1:
+            raise ValueError("validation_steps must be positive")
+
+        validation_loader = build_dataloader(
+            dp_world_size=self.parallel_dims.dp_replicate * self.parallel_dims.dp_shard,
+            dp_rank=self.parallel_dims.get_mesh("batch").get_local_rank(),
+            tokenizer=self.tokenizer,
+            job_config=self.job_config,
+            split="validation",
+            infinite=False,
+        )
+        validation_iterator = iter(validation_loader)
+        was_training = self.model_parts[0].training
+        for model in self.model_parts:
+            model.eval()
+
+        sums = torch.zeros(2, dtype=torch.float64, device=self.device)
+        try:
+            for _ in range(self.job_config.training.validation_steps):
+                input_dict, labels = next(validation_iterator)
+                for key, value in input_dict.items():
+                    if isinstance(value, torch.Tensor):
+                        input_dict[key] = value.to(self.device)
+                labels = labels.to(self.device)
+                valid_tokens = (labels != IGNORE_INDEX).sum()
+                inputs = input_dict["input"]
+                extra_inputs = {k: v for k, v in input_dict.items() if k != "input"}
+                with self.maybe_enable_amp:
+                    predictions = self.model_parts[0](inputs, **extra_inputs)
+                    loss_sum = self.loss_fn(predictions, labels)
+                sums[0] += loss_sum.double()
+                sums[1] += valid_tokens
+        finally:
+            for model in self.model_parts:
+                model.train(was_training)
+            del validation_iterator, validation_loader
+
+        if self.parallel_dims.dp_cp_enabled:
+            torch.distributed.all_reduce(
+                sums, group=self.parallel_dims.get_mesh("loss").get_group()
+            )
+        if sums[1].item() == 0:
+            raise RuntimeError("Validation split contains no valid tokens")
+        validation_loss = (sums[0] / sums[1]).item()
+        self.metrics_processor.log_validation(self.step, validation_loss)
+        return validation_loss
+
+    @torch.no_grad()
+    def generate_sample(self, max_new_tokens: int) -> str:
+        """Greedy generation on all DDP ranks; return and print sample on rank zero."""
+        if not isinstance(self.tokenizer, ByteTokenizer):
+            raise ValueError("End-of-run generation currently requires ByteTokenizer")
+        prompt = "The meaning of distributed training is"
+        token_ids = self.tokenizer.encode(prompt, add_bos=True)
+        max_length = self.job_config.training.seq_len
+        max_new_tokens = min(max_new_tokens, max_length - len(token_ids))
+        if max_new_tokens <= 0:
+            raise ValueError("Prompt leaves no room for generation")
+
+        was_training = self.model_parts[0].training
+        for model in self.model_parts:
+            model.eval()
+        tokens = torch.tensor([token_ids], dtype=torch.long, device=self.device)
+        try:
+            with self.maybe_enable_amp:
+                for _ in range(max_new_tokens):
+                    logits = self.model_parts[0](tokens)
+                    next_token = logits[:, -1, :].argmax(dim=-1, keepdim=True)
+                    tokens = torch.cat((tokens, next_token), dim=1)
+                    if next_token.item() == self.tokenizer.eos_id:
+                        break
+        finally:
+            for model in self.model_parts:
+                model.train(was_training)
+
+        generated = self.tokenizer.decode(tokens[0].tolist())
+        if torch.distributed.get_rank() == 0:
+            logger.info("Greedy sample at step {}: {}", self.step, generated)
+        return generated
 
     def should_continue_training(self) -> bool:
         return self.step < self.job_config.training.steps

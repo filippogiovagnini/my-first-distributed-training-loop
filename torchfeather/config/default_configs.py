@@ -256,6 +256,9 @@ def get_deepseek_v3_ddp4_benchmark_config() -> JobConfig:
 
     config.training.local_batch_size = 8
     config.training.steps = 300
+    config.training.validation_interval_steps = 100
+    config.training.validation_steps = 5
+    config.training.generation_max_new_tokens = 64
     config.metrics.log_freq = 10
     config.activation_checkpoint.mode = "none"
     config.compile.enable = False

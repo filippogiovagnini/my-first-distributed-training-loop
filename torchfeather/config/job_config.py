@@ -90,6 +90,15 @@ class Training:
 
     steps: int = 10000
 
+    validation_interval_steps: int = 0
+    """Run held-out validation every N optimizer steps; 0 disables validation."""
+
+    validation_steps: int = 5
+    """Number of local batches per rank to use for each validation pass."""
+
+    generation_max_new_tokens: int = 0
+    """Greedy byte-token generation length at the end of training; 0 disables it."""
+
     dtype: Literal["bfloat16", "float32"] = "float32"
     """
     torch dtype for training. In contrast to mixed precision training, setting training_dtype=bfloat16 will

@@ -26,7 +26,12 @@ class GarbageCollection:
 
 
 def get_peak_flops(device_name: str) -> int:
-    if "A100" in device_name:
+    if "RTX 3090" in device_name:
+        # Dense BF16 Tensor Core peak with FP32 accumulation, matching the
+        # DDP autocast path. NVIDIA GA102 whitepaper: 71 TFLOPS (142 with sparsity).
+        # https://www.nvidia.com/content/PDF/nvidia-ampere-ga-102-gpu-architecture-whitepaper-v2.1.pdf
+        return int(71e12)
+    elif "A100" in device_name:
         # data from https://www.nvidia.com/en-us/data-center/a100/
         return int(312e12)
     elif "H100" in device_name:

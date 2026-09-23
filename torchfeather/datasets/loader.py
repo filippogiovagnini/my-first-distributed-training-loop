@@ -6,7 +6,11 @@ from torchfeather.config import JobConfig
 def build_dataloader(
     dp_world_size: int, dp_rank: int,
     tokenizer: ByteTokenizer | DeepSeekV3Tokenizer, job_config: JobConfig,
+    split: str = "train", infinite: bool = True,
 ) -> ParallelAwareDataloader:
+    if split != "train" or not infinite:
+        if job_config.training.dataset != "local_tokens":
+            raise ValueError("Finite validation splits currently require local_tokens")
     if job_config.training.dataset != "local_tokens":
         from torchfeather.datasets.hf_datasets import build_hf_dataloader
 
@@ -20,7 +24,8 @@ def build_dataloader(
         raise ValueError("local_tokens requires training.dataset_path")
     dataset = LocalTokenDataset(
         job_config.training.dataset_path, job_config.training.seq_len,
-        dp_rank=dp_rank, dp_world_size=dp_world_size,
+        dp_rank=dp_rank, dp_world_size=dp_world_size, split=split,
+        infinite=infinite,
     )
     return ParallelAwareDataloader(
         dataset=dataset, dp_rank=dp_rank, dp_world_size=dp_world_size,

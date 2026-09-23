@@ -1,3 +1,4 @@
+import math
 import os
 import time
 from collections import namedtuple
@@ -344,3 +345,19 @@ class MetricsProcessor:
 
     def close(self):
         self.logger.close()
+
+    def log_validation(self, step: int, loss: float) -> None:
+        self.logger.log(
+            {
+                "loss_metrics/validation_loss": loss,
+                "loss_metrics/validation_perplexity": math.exp(min(loss, 80.0)),
+            },
+            step,
+        )
+        if torch.distributed.get_rank() == 0:
+            logger.info(
+                "validation step: {}  loss: {:.4f}  perplexity: {:.2f}",
+                step,
+                loss,
+                math.exp(min(loss, 80.0)),
+            )
