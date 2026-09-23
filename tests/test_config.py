@@ -27,6 +27,19 @@ def test_ddp4_config_uses_four_data_parallel_ranks() -> None:
     assert config.training.steps == 100
 
 
+def test_ddp4_benchmark_config_is_a_sized_four_gpu_run() -> None:
+    config = get_config("ddp4_benchmark")
+    with torch.device("meta"):
+        model = DeepSeekV3Model(config.model.args)
+    assert sum(p.numel() for p in model.parameters()) == 26_529_024
+    assert config.training.local_batch_size == 8
+    assert config.training.steps == 300
+    assert config.metrics.log_freq == 10
+    assert config.training.seq_len == 512
+    assert config.parallelism.data_parallel_replicate_degree == 4
+    assert config.compile.enable is False
+
+
 def test_dataset_config_is_constructible() -> None:
     config = DatasetConfig(
         path="example/dataset",

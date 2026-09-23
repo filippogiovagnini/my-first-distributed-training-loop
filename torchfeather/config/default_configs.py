@@ -239,6 +239,29 @@ def get_deepseek_v3_ddp1_config() -> JobConfig:
     return config
 
 
+def get_deepseek_v3_ddp4_benchmark_config() -> JobConfig:
+    """Medium-size four-GPU workload intended for the RTX 3090 benchmark."""
+    config = get_deepseek_v3_ddp4_config()
+    args = config.model.args
+    args.dim = 512
+    args.n_layers = 6
+    args.inter_dim = 1536
+    args.moe_inter_dim = 512
+    args.n_heads = 8
+    args.kv_lora_rank = 128
+    args.qk_nope_head_dim = 32
+    args.qk_rope_head_dim = 32
+    args.v_head_dim = 64
+    args.max_seq_len = 512
+
+    config.training.local_batch_size = 8
+    config.training.steps = 300
+    config.metrics.log_freq = 10
+    config.activation_checkpoint.mode = "none"
+    config.compile.enable = False
+    return config
+
+
 config_map = {
     "hsdp": get_deepseek_v3_hsdp_config,
     "ddp": get_deepseek_v3_ddp_config,
@@ -251,6 +274,7 @@ config_map = {
     "fsdp_ep_etp": get_deepseek_v3_fsdp_ep_etp_config,
     "ddp4": get_deepseek_v3_ddp4_config,
     "ddp1": get_deepseek_v3_ddp1_config,
+    "ddp4_benchmark": get_deepseek_v3_ddp4_benchmark_config,
 }
 
 
