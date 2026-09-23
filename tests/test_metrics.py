@@ -1,7 +1,10 @@
 import time
 from types import SimpleNamespace
 
+import pytest
+
 from torchfeather.components.metrics import DeviceMemStats, MetricsProcessor
+from torchfeather.distributed import ParallelDims
 
 
 class RecordingLogger:
@@ -22,11 +25,18 @@ class FixedMemoryMonitor:
         pass
 
 
-def test_metrics_include_per_device_and_global_throughput() -> None:
+@pytest.mark.parametrize(
+    "replicate,shard,world_size",
+    [(1, 1, 1), (4, 1, 4), (1, 4, 4), (2, 2, 4), (2, -1, 4)],
+    ids=["single", "ddp4", "fsdp4", "hsdp4", "inferred-sharding"],
+)
+def test_metrics_include_per_device_and_global_throughput(
+    replicate, shard, world_size,
+) -> None:
     processor = object.__new__(MetricsProcessor)
-    processor.parallel_dims = SimpleNamespace(
-        dp=4,
-        non_data_parallel_size=1,
+    processor.parallel_dims = ParallelDims(
+        dp_replicate=replicate, dp_shard=shard, world_size=world_size,
+        cp=1, tp=1, pp=1, ep=1, etp=1,
     )
     processor.job_config = SimpleNamespace(
         metrics=SimpleNamespace(log_freq=1),
@@ -51,5 +61,5 @@ def test_metrics_include_per_device_and_global_throughput() -> None:
     assert processor.logger.step == 1
     assert metrics["throughput/per_device_tokens_per_sec"] > 0
     assert metrics["throughput/global_tokens_per_sec"] == (
-        metrics["throughput/per_device_tokens_per_sec"] * 4
+        metrics["throughput/per_device_tokens_per_sec"] * world_size
     )

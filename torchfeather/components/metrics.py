@@ -286,7 +286,9 @@ class MetricsProcessor:
         tps = self.ntokens_since_last_log / (
             time_delta * self.parallel_dims.non_data_parallel_size
         )
-        data_parallel_degree = self.parallel_dims.dp
+        data_parallel_degree = (
+            self.parallel_dims.dp_replicate * self.parallel_dims.dp_shard
+        )
         global_tps = tps * data_parallel_degree
         # model FLOPS utilization
         # For its definition and calculation, please refer to the PaLM paper:
