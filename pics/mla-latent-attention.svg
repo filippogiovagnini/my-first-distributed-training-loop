@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+  <title id="title">Multi-Head Latent Attention data flow</title>
+  <desc id="desc">MLA stores a compressed KV latent and a rotary positional key. At inference, the query and output projections are absorbed so attention reads and writes latent vectors without reconstructing per-head content keys and values.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#526273"/>
+    </marker>
+    <style>
+      .bg { fill: #f7f9fc; }
+      .title { font: 700 25px Inter, ui-sans-serif, system-ui, sans-serif; fill: #16283d; }
+      .subtitle { font: 14px Inter, ui-sans-serif, system-ui, sans-serif; fill: #526273; }
+      .label { font: 600 15px Inter, ui-sans-serif, system-ui, sans-serif; fill: #20364d; }
+      .small { font: 13px Inter, ui-sans-serif, system-ui, sans-serif; fill: #42566b; }
+      .tiny { font: 12px Inter, ui-sans-serif, system-ui, sans-serif; fill: #526273; }
+      .section { font: 700 13px Inter, ui-sans-serif, system-ui, sans-serif; letter-spacing: 1.1px; fill: #536b83; }
+      .box { stroke-width: 1.5; rx: 12; }
+      .input { fill: #eaf0f7; stroke: #8ba1b8; }
+      .latent { fill: #e2f4ed; stroke: #57a888; }
+      .pos { fill: #fff1d9; stroke: #d9a640; }
+      .query { fill: #e8efff; stroke: #7c9be6; }
+      .attn { fill: #f0eaff; stroke: #9b7cdb; }
+      .out { fill: #e5f2fb; stroke: #69a8d1; }
+      .cache { fill: #ffffff; stroke: #94a3b3; stroke-dasharray: 5 4; }
+      .arrow { fill: none; stroke: #526273; stroke-width: 2; marker-end: url(#arrow); }
+      .arrow-blue { fill: none; stroke: #6687d8; stroke-width: 2; marker-end: url(#arrow); }
+      .arrow-green { fill: none; stroke: #4a9a7a; stroke-width: 2; marker-end: url(#arrow); }
+      .arrow-amber { fill: none; stroke: #c9942f; stroke-width: 2; marker-end: url(#arrow); }
+      .divider { stroke: #d8e0e8; stroke-width: 1; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1200" height="620" rx="18"/>
+  <text class="title" x="36" y="43">Multi-Head Latent Attention (MLA)</text>
+  <text class="subtitle" x="36" y="68">Compress the KV state, cache the latent and positional key, and absorb fixed projections at inference.</text>
+  <line class="divider" x1="36" y1="88" x2="1164" y2="88"/>
+
+  <text class="section" x="36" y="119">ENCODE AND CACHE EACH TOKEN</text>
+  <rect class="box input" x="38" y="150" width="132" height="58"/>
+  <text class="label" x="104" y="175" text-anchor="middle">hidden state</text>
+  <text class="small" x="104" y="195" text-anchor="middle">hₜ</text>
+
+  <path class="arrow" d="M170 179 H222"/>
+  <rect class="box latent" x="226" y="145" width="174" height="68"/>
+  <text class="label" x="313" y="174" text-anchor="middle">KV down-projection</text>
+  <text class="small" x="313" y="196" text-anchor="middle">Wᵈₖᵥ</text>
+
+  <path class="arrow-green" d="M400 179 H454"/>
+  <rect class="box latent" x="458" y="140" width="190" height="78"/>
+  <text class="label" x="553" y="170" text-anchor="middle">compressed latent</text>
+  <text class="small" x="553" y="194" text-anchor="middle">cₜᵏᵛ ∈ ℝᵈᶜ</text>
+
+  <path class="arrow-green" d="M648 179 H706"/>
+  <rect class="box cache" x="710" y="140" width="190" height="78"/>
+  <text class="label" x="805" y="170" text-anchor="middle">KV cache</text>
+  <text class="small" x="805" y="194" text-anchor="middle">cⱼᵏᵛ (one latent)</text>
+
+  <path class="arrow-amber" d="M313 213 V265 H458"/>
+  <rect class="box pos" x="462" y="237" width="186" height="64"/>
+  <text class="label" x="555" y="263" text-anchor="middle">RoPE key</text>
+  <text class="small" x="555" y="285" text-anchor="middle">kₜᴿ</text>
+  <path class="arrow-amber" d="M648 269 H706"/>
+  <rect class="box cache" x="710" y="237" width="190" height="64"/>
+  <text class="label" x="805" y="263" text-anchor="middle">KV cache</text>
+  <text class="small" x="805" y="285" text-anchor="middle">rotated kⱼᴿ</text>
+  <text class="tiny" x="710" y="323">Cache stores the latent plus the compact positional key.</text>
+
+  <line class="divider" x1="36" y1="343" x2="1164" y2="343"/>
+  <text class="section" x="36" y="372">ABSORBED ATTENTION AT INFERENCE</text>
+
+  <rect class="box input" x="38" y="408" width="132" height="58"/>
+  <text class="label" x="104" y="433" text-anchor="middle">hidden state</text>
+  <text class="small" x="104" y="453" text-anchor="middle">hₜ</text>
+  <path class="arrow-blue" d="M170 437 H222"/>
+  <rect class="box query" x="226" y="399" width="174" height="76"/>
+  <text class="label" x="313" y="428" text-anchor="middle">query projections</text>
+  <text class="small" x="313" y="451" text-anchor="middle">qᶜ and qᴿ</text>
+
+  <path class="arrow-blue" d="M400 424 H454"/>
+  <rect class="box query" x="458" y="389" width="190" height="64"/>
+  <text class="label" x="553" y="415" text-anchor="middle">absorbed content query</text>
+  <text class="small" x="553" y="438" text-anchor="middle">q̃ = (Wᵁᵏ)ᵀWᵠhₜ</text>
+  <path class="arrow-amber" d="M400 451 H434 V500 H454"/>
+  <rect class="box pos" x="458" y="471" width="190" height="58"/>
+  <text class="label" x="553" y="496" text-anchor="middle">rotated query</text>
+  <text class="small" x="553" y="517" text-anchor="middle">RoPE(qᴿ)</text>
+
+  <path class="arrow-green" d="M900 179 H942 V419 H972"/>
+  <path class="arrow-amber" d="M900 269 H930 V499 H972"/>
+  <path class="arrow-blue" d="M648 421 H972"/>
+  <path class="arrow-amber" d="M648 500 H972"/>
+  <rect class="box attn" x="976" y="416" width="184" height="103"/>
+  <text class="label" x="1068" y="445" text-anchor="middle">attention</text>
+  <text class="small" x="1068" y="468" text-anchor="middle">content + position</text>
+  <text class="small" x="1068" y="492" text-anchor="middle">weighted latent output</text>
+
+  <path class="arrow" d="M1068 519 V553 H805"/>
+  <rect class="box out" x="578" y="535" width="222" height="62"/>
+  <text class="label" x="689" y="560" text-anchor="middle">absorbed value/output maps</text>
+  <text class="small" x="689" y="582" text-anchor="middle">WᴼWᵁᵛ → μₜ</text>
+  <path class="arrow" d="M578 566 H496"/>
+  <text class="tiny" x="38" y="584">Per-head content keys/values are not materialized in the inference path.</text>
+</svg>
