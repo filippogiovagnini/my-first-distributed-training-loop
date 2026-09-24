@@ -440,6 +440,7 @@ class Trainer(Stateful):
     def train_step(
         self, data_iterator: Iterator[tuple[dict[str, torch.Tensor], torch.Tensor]]
     ):
+        train_step_start = time.perf_counter()
         self.optimizers.zero_grad()
         # Save the current step learning rate for logging
         lr = self.lr_schedulers.schedulers[0].get_last_lr()[0]
@@ -510,6 +511,9 @@ class Trainer(Stateful):
         loss = torch.sum(torch.stack(accumulated_losses))
 
         # log metrics
+        self.metrics_processor.train_time_since_last_log += (
+            time.perf_counter() - train_step_start
+        )
         if not should_log:
             return
 

@@ -235,8 +235,10 @@ class MetricsProcessor:
 
     gpu_peak_flops: int
     ntokens_since_last_log: int
+    train_time_since_last_log: float
     data_loading_times: list[float]
     time_last_log: float
+    last_logged_step: int
 
     num_flops_per_token: int
     optimizers: OptimizersContainer | None
@@ -258,8 +260,10 @@ class MetricsProcessor:
             self.device_memory_monitor.device_name
         )
         self.ntokens_since_last_log = 0
+        self.train_time_since_last_log = 0.0
         self.data_loading_times = []
         self.time_last_log = time.perf_counter()
+        self.last_logged_step = 0
         self.device_memory_monitor.reset_peak_stats()
 
         # These variables have to be set later as they depend on other components or model.
@@ -281,11 +285,20 @@ class MetricsProcessor:
     ):
         assert self.num_flops_per_token > 0, "num_flops_per_token must be set"
 
+        # Wall time between log points includes periodic validation/checkpointing.
+        # Use accumulated optimizer-step time for training throughput so those
+        # maintenance pauses do not appear as artificial throughput collapses.
         time_delta = time.perf_counter() - self.time_last_log
+        train_time_delta = self.train_time_since_last_log
+        if train_time_delta <= 0:
+            raise RuntimeError("Training time must be recorded before logging metrics")
+        steps_since_last_log = step - self.last_logged_step
+        if steps_since_last_log <= 0:
+            raise RuntimeError("Metric steps must increase monotonically")
 
         # tokens per second per device, abbreviated as tps
         tps = self.ntokens_since_last_log / (
-            time_delta * self.parallel_dims.non_data_parallel_size
+            train_time_delta * self.parallel_dims.non_data_parallel_size
         )
         data_parallel_degree = (
             self.parallel_dims.dp_replicate * self.parallel_dims.dp_shard
@@ -297,7 +310,7 @@ class MetricsProcessor:
         mfu = 100 * self.num_flops_per_token * tps / self.gpu_peak_flops
         tflops = self.num_flops_per_token * tps / 1e12
 
-        time_end_to_end = time_delta / self.job_config.metrics.log_freq
+        time_end_to_end = time_delta / steps_since_last_log
         time_data_loading = sum(self.data_loading_times) / len(self.data_loading_times)
         time_data_loading_pct = 100 * sum(self.data_loading_times) / time_delta
 
@@ -312,6 +325,7 @@ class MetricsProcessor:
             "tflops": tflops,
             "mfu(%)": mfu,
             "time_metrics/end_to_end(s)": time_end_to_end,
+            "time_metrics/train_step(s)": train_time_delta / steps_since_last_log,
             "time_metrics/data_loading(s)": time_data_loading,
             "time_metrics/data_loading(%)": time_data_loading_pct,
             "memory/max_active(GiB)": device_mem_stats.max_active_gib,
@@ -339,8 +353,10 @@ class MetricsProcessor:
         )
 
         self.ntokens_since_last_log = 0
+        self.train_time_since_last_log = 0.0
         self.data_loading_times.clear()
         self.time_last_log = time.perf_counter()
+        self.last_logged_step = step
         self.device_memory_monitor.reset_peak_stats()
 
     def close(self):

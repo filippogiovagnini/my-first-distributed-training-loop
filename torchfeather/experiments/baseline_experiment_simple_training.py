@@ -61,6 +61,13 @@ VALIDATION_STEPS = 5
 CHECKPOINT_INTERVAL_STEPS = 500
 GENERATION_MAX_NEW_TOKENS = 128
 
+# Keep the base benchmark's warmup-stable-cosine schedule explicit in this
+# experiment: warm up for 50 steps, hold through about 20% of the run, then decay.
+LR_WARMUP_STEPS = 50
+LR_DECAY_RATIO = 0.8
+LR_DECAY_TYPE = "cosine"
+LR_MIN_FACTOR = 0.1
+
 # Larger profile: one billion prepared byte tokens and a roughly 150M model.
 # A width of 3,728 gives 150,023,424 total parameters with this base model.
 LARGE_PREPARED_DATASET_TOKEN_COUNT = 1_000_000_000
@@ -102,6 +109,10 @@ def _build_scaled_config(
     config.training.global_batch_size = GLOBAL_BATCH_SIZE
     config.training.seq_len = SEQUENCE_LENGTH
     config.training.steps = training_steps
+    config.lr_scheduler.warmup_steps = LR_WARMUP_STEPS
+    config.lr_scheduler.decay_ratio = LR_DECAY_RATIO
+    config.lr_scheduler.decay_type = LR_DECAY_TYPE
+    config.lr_scheduler.min_lr_factor = LR_MIN_FACTOR
 
     config.training.validation_interval_steps = VALIDATION_INTERVAL_STEPS
     config.training.validation_steps = VALIDATION_STEPS
