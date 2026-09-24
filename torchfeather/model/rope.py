@@ -66,6 +66,13 @@ def apply_rotary_emb(x: torch.Tensor, freqs_cis: torch.Tensor) -> torch.Tensor:
     # x: [B, T, H, D]
     dtype = x.dtype
     x = torch.view_as_complex(x.float().view(*x.shape[:-1], -1, 2)) # this becomes [B, T, H, D/2]
+    if freqs_cis.size(0) < x.size(1):
+        raise ValueError(
+            f"RoPE table has {freqs_cis.size(0)} positions but input has {x.size(1)}."
+        )
+    # Training inputs use the full configured sequence length. Autoregressive
+    # inference often uses a shorter prefix, so apply only its position rows.
+    freqs_cis = freqs_cis[: x.size(1)]
     freqs_cis = freqs_cis.view(1, x.size(1), 1, x.size(-1))
     y = torch.view_as_real(x * freqs_cis).flatten(3) # view as real re-ads the two dimensions at the end and flatten removes them again
     return y.to(dtype)
