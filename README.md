@@ -2,7 +2,7 @@
 
 ## About this project
 
-I’m building this repository as a hands-on record of my progress learning how to train language models, especially across multiple GPUs. It brings together a training loop, experiments, and notes on ideas such as attention, Mixture-of-Experts, and distributed training. The project is still a work in progress: I’m testing approaches, improving the implementation, and refining my explanations as I learn. My aim is to make that process visible and share what I discover along the way. The [interactive experiment dashboard](https://filippogiovagnini.github.io/my-first-distributed-training-loop/) lets you explore the training and validation curves, compare run throughput, and inspect the final greedy samples. Open `docs/index.html` locally, or enable GitHub Pages with `docs/` as the publishing source to host it.
+I’m building this repository as a hands-on record of my progress learning how to train language models, especially across multiple GPUs. It brings together a training loop, experiments, and notes on ideas such as attention, Mixture-of-Experts, and distributed training. The project is still a work in progress: I’m testing approaches, improving the implementation, and refining my explanations as I learn. My aim is to make that process visible and share what I discover along the way. The [interactive experiment dashboard](https://filippogiovagnini.github.io/my-first-distributed-training-loop/) lets you explore the training and validation curves, compare run throughput, and inspect the final greedy samples.
 
 ## Architecture
 
