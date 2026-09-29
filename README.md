@@ -2,7 +2,7 @@
 
 ## About this project
 
-I’m building this repository as a hands-on record of my progress learning how to train language models, especially across multiple GPUs. It brings together a training loop, experiments, and notes on ideas such as attention, Mixture-of-Experts, and distributed training. The project is still a work in progress: I’m testing approaches, improving the implementation, and refining my explanations as I learn. My aim is to make that process visible and share what I discover along the way. The [interactive experiment dashboard](docs/index.html) lets you explore the training and validation curves, compare run throughput, and inspect the final greedy samples. Open `docs/index.html` locally, or enable GitHub Pages with `docs/` as the publishing source to host it.
+I’m building this repository as a hands-on record of my progress learning how to train language models, especially across multiple GPUs. It brings together a training loop, experiments, and notes on ideas such as attention, Mixture-of-Experts, and distributed training. The project is still a work in progress: I’m testing approaches, improving the implementation, and refining my explanations as I learn. My aim is to make that process visible and share what I discover along the way. The [interactive experiment dashboard](https://filippogiovagnini.github.io/my-first-distributed-training-loop/) lets you explore the training and validation curves, compare run throughput, and inspect the final greedy samples. Open `docs/index.html` locally, or enable GitHub Pages with `docs/` as the publishing source to host it.
 
 ## Architecture
 
@@ -125,13 +125,13 @@ In the ramped region, this interpolates from $\theta_i$ to $\theta_i/s$. Since $
 Consider a linear layer $y = Wx$, where $x$ has $p$ independent, zero-mean features, each with variance $v$. Suppose the entries in each row of $W$ are independent, zero-mean, independent of $x$, and have variance $\sigma^2$. For an output coordinate $y_j = \sum_{i=1}^{p} W_{ji}x_i$, the cross terms vanish under these assumptions, giving
 
 $$
-\operatorname{Var}(y_j) = \sum_{i=1}^{p} \operatorname{Var}(W_{ji}x_i) = p v \sigma^2.
+\mathrm{Var}(y_j) = \sum_{i=1}^{p} \mathrm{Var}(W_{ji}x_i) = p v \sigma^2.
 $$
 
 If we choose the weight variance so that the output variance matches the input variance, then
 
 $$
-\operatorname{Var}(y_j) = \operatorname{Var}(x_i) = v
+\mathrm{Var}(y_j) = \mathrm{Var}(x_i) = v
 \quad\Longrightarrow\quad
 \sigma = \frac{1}{\sqrt{p}}.
 $$
@@ -147,21 +147,21 @@ $$
 Its variance is
 
 $$
-\operatorname{Var}(x_{\ell+1}) = \operatorname{Var}(x_{\ell})
- + \operatorname{Var}(f_{\ell}(x_{\ell}))
- + 2\operatorname{Cov}(x_{\ell}, f_{\ell}(x_{\ell})).
+\mathrm{Var}(x_{\ell+1}) = \mathrm{Var}(x_{\ell})
+ + \mathrm{Var}(f_{\ell}(x_{\ell}))
+ + 2\mathrm{Cov}(x_{\ell}, f_{\ell}(x_{\ell})).
 $$
 
 At initialization, a common approximation is that the residual branch is close to uncorrelated with the residual stream, so the covariance term is small:
 
 $$
-\operatorname{Cov}(x_{\ell}, f_{\ell}(x_{\ell})) \approx 0.
+\mathrm{Cov}(x_{\ell}, f_{\ell}(x_{\ell})) \approx 0.
 $$
 
 The branch is not independent of the residual stream, since it receives $x_{\ell}$ as input; this is an approximation about their covariance at initialization. If each residual branch has standard deviation $\sigma_f$ and this covariance is negligible, then after $L$ layers with one residual branch per layer,
 
 $$
-\operatorname{Var}(x_L) \approx \operatorname{Var}(x_0) + L\sigma_f^2.
+\mathrm{Var}(x_L) \approx \mathrm{Var}(x_0) + L\sigma_f^2.
 $$
 
 With two residual branches per layer, the accumulated contribution is approximately $2L\sigma_f^2$. If the initial residual stream has variance near $1$ and we want that variance to remain roughly constant, this suggests a branch standard deviation on the order of
